@@ -126,49 +126,15 @@ def generate(
                 3: (0, 0),
             }
 
-        svg1 = bsb_element[0]
-        group1 = dwg_i.g()
-        for el in svg1.elements:
-            group1.add(el)
-        group1.translate(pos[0])
-        dwg_i.add(group1)
-        if bsb_len >= 2:
-            svg2 = bsb_element[1]
-            group2 = dwg_i.g()
-            for el in svg2.elements:
-                group2.add(el)
-            group2.translate(pos[1])
-            # group2.rotate(90, (pos[1][0], pos[1][1]))
-            dwg_i.add(group2)
-            if bsb_len >= 3:
-                svg3 = bsb_element[2]
-                group3 = dwg_i.g()
-                for el in svg3.elements:
-                    group3.add(el)
-                group3.translate(pos[2])
-                # group3.rotate(180, (pos[2][0], pos[2][1]))
-                dwg_i.add(group3)
-                if bsb_len == 4:
-                    svg4 = bsb_element[3]
-                    group4 = dwg_i.g()
-                    for el in svg4.elements:
-                        group4.add(el)
-                    group4.translate(pos[3])
-                    # group4.rotate(270, (pos[3][0], pos[3][1]))
-                    dwg_i.add(group4)
-
-        # groups = []
-        # for i, bsb in enumerate(bsb_element):
-        #     groups.append(dwg_i.g())
-        #     for el in bsb.elements:
-        #         groups[i].add(el)
-        #     x, y = pos[i]
-        #     rx, ry = x + 200, y + 200
-        #     groups[i].translate(x, y)
-        #     # curt_group.rotate(90*i, (rx, ry))
-
-        # for group in groups:
-        #     dwg_i.add(group)
+        for i, bsb in enumerate(bsb_element):
+            group = dwg_i.g()
+            for el in bsb.elements:
+                group.add(el)
+            x, y = pos[i]
+            rx, ry = x + 200, y + 200
+            group.rotate(90*i, (rx, ry))
+            group.translate(x, y)
+            dwg_i.add(group)
 
         return dwg_i, width, height
     for bsb_element in bsb_elems:

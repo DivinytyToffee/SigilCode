@@ -106,19 +106,18 @@ def generate(
 
     substrings = [input_string[x*3:x*3+3] for x in range(math.ceil(len(input_string) / 3))]
     msb_svgs = [generate_msb(s, __save=True) for s in substrings]
-    bsb_elems = [msb_svgs[x*4:x*4+4] for x in range(math.ceil(len(input_string) / 4))]
-    print(bsb_elems)
+    bsb_elems = [msb_svgs[x*4:x*4+4] for x in range(math.ceil(len(msb_svgs) / 4))]
 
-    def build_blocks(bsb_element: list):
-        print(bsb_element)
+    def build_blocks(bsb_element: list, count: int = 0):
         bsb_len = len(bsb_element)
+        multiple = (2 ** count)
         if bsb_len == 1:
-            width, height = 400, 400
+            width, height = 400 * multiple, 400 * multiple
         elif bsb_len == 2:
-            width, height = 400, 800
+            width, height = 400 * multiple, 800 * multiple
         else:
-            width, height = 800, 800
-        dwg_i = svgwrite.Drawing(f"output/{''.join(substrings[0:bsb_len])}.svg", size=(width, height))
+            width, height = 800 * multiple, 800 * multiple
+        dwg_i = svgwrite.Drawing(f"output/{''.join(substrings[0:bsb_len])}_{count}.svg", size=(width, height))
         pos = {
                 0: (400, 0),
                 1: (400, 400),
@@ -136,16 +135,34 @@ def generate(
             group.translate(x, y)
             dwg_i.add(group)
 
+        dwg_i.save()
+
         return dwg_i, width, height
-    for bsb_element in bsb_elems:
-        if bsb_element:
-            final_svg, width, height = build_blocks(bsb_element)
+
+    def compose_bsb(nabor, count: int = 0):
+        ret_nabor = []
+        for bsbs in nabor:
+            if bsbs:
+                svg, width, height = build_blocks(bsbs, count)
+                ret_nabor.append(svg)
+        return ret_nabor, width, height
+
+    count = -1
+    i = len(bsb_elems[0])
+    while i > 1:
+        count += 1
+        i -= 1
+        a, width, height = compose_bsb(bsb_elems, count)
+        bsb_elems = [a]
+
+    final_svg = bsb_elems[0][0]
+
     if __grid or __coord:
         __add_grid(__coord, __grid, final_svg, height, width)
     if __save:
-        final_svg.saveas(filename)
+        final_svg.save()
     return final_svg
 
 
 if __name__ == "__main__":
-    generate("ABCDEFGH", __grid=True, __coord=True, __save=True)
+    generate("ABCDEFGHIGKLOMNPQRST", __grid=True, __coord=True, __save=True)

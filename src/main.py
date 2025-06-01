@@ -105,93 +105,75 @@ def generate(
         raise ValueError("Строка должна быть допустимым идентификатором Python")
 
     substrings = [input_string[x*3:x*3+3] for x in range(math.ceil(len(input_string) / 3))]
-    msb_svgs = [generate_msb(s, __save=False ) for s in substrings]
+    msb_svgs = [generate_msb(s, __save=False) for s in substrings]
     bsb_elems = [msb_svgs[x*4:x*4+4] for x in range(math.ceil(len(msb_svgs) / 4))]
 
-    def build_blocks(bsb_element: list, letters: str, count: int = 0):
-        n = len(bsb_element)
+    def build_blocks(bsb_element: list, count: int = 0):
+        bsb_len = len(bsb_element)
         multiple = (2 ** count)
         base_size = 400
-        if n == 1:
-            width, height = base_size * multiple, base_size * multiple
-            positions = [(0, 0)]
-            rotations = [0]
-        elif n == 2:
-            width, height = base_size * multiple, 2 * base_size * multiple
-            positions = [
-                (0, 0),
-                (0, base_size * multiple),
-            ]
-            rotations = [0, 90]
-        elif n == 3:
-            width, height = 2 * base_size * multiple, 2 * base_size * multiple
-            positions = [
-                (base_size * multiple, 0),
-                (base_size * multiple, base_size * multiple),
-                (0, base_size * multiple),
-            ]
-            rotations = [0, 90, 180]
-        elif n == 4:
-            width, height = 2 * base_size * multiple, 2 * base_size * multiple
-            positions = [
-                (base_size * multiple, 0),
-                (base_size * multiple, base_size * multiple),
-                (0, base_size * multiple),
-                (0, 0),
-            ]
-            rotations = [0, 90, 180, 270]
+        multiple_size = base_size * multiple
+        if bsb_len == 1:
+            width, height = multiple_size, multiple_size
+        elif bsb_len == 2:
+            width, height = multiple_size, 2 * multiple_size
         else:
-            groups = [bsb_element[i:i+4] for i in range(0, n, 4)]
-            group_letters = [letters[i*4:(i+1)*4] for i in range(math.ceil(n/4))]
-            sub_svgs = []
-            for idx, (group, group_let) in enumerate(zip(groups, group_letters)):
-                svg, _, _ = build_blocks(group, group_let, count+1)
-                sub_svgs.append(svg)
-            return build_blocks(sub_svgs, letters, count)
-        dwg_i = svgwrite.Drawing(f"output/{letters}_{count}.svg", size=(width, height))
+            width, height = 2 * multiple_size, 2 * multiple_size
+
+        # 1 pravo levo | 2 vverh vniz
+        pos = {
+                0: lambda len_: (multiple_size - (100 * (len_ + 1 if len_ <= 3 else 4)), 0),
+                1: lambda len_: (multiple_size - (100 * (len_ + 1 if len_ <= 3 else 4)), multiple_size),
+                2: lambda len_: (- (100 * (len_ + 1 if len_ <= 3 else 4)), multiple_size),
+                # 3: (0, 0),
+            }
+        dwg_i = svgwrite.Drawing(filename, size=(width, height))
         for i, bsb in enumerate(bsb_element):
             group = dwg_i.g()
-            for el in bsb.elements:
+            bsb_elements = bsb.elements
+            x, y = pos[i](len(bsb_elements))
+            for el in bsb_elements:
                 group.add(el)
-            x, y = positions[i]
-            angle = rotations[i]
-            cx = x + base_size * multiple // 2
-            cy = y + base_size * multiple // 2
-            if angle != 0:
-                group.rotate(angle, (cx, cy))
-            group.translate(x, y)
+            rx, ry = x + multiple_size // 2, y + multiple_size // 2
+            group.rotate(90*i, (rx, ry))
+
+            if bsb_len == len(bsb_elements):
+                print('here')
+                print(filename)
+                # group.translate(x, y+multiple_size//2)
+                group.translate(x, y)
+            else:
+                group.translate(x, y)
             dwg_i.add(group)
+
         return dwg_i, width, height
 
-    def compose_bsb(nabor, letters_list, count: int = 0):
+    def compose_bsb(nabor, count: int = 0):
         ret_nabor = []
-        ret_letters = []
-        for bsbs, letters in zip(nabor, letters_list):
+        for bsbs in nabor:
             if bsbs:
-                svg, width, height = build_blocks(bsbs, letters, count)
+                svg, width, height = build_blocks(bsbs, count)
                 ret_nabor.append(svg)
-                ret_letters.append(letters)
-        return ret_nabor, ret_letters, width, height
+        return ret_nabor, width, height
 
     count = -1
-    letters_list = [s for s in substrings]
-    i = len(bsb_elems[0])
+    i = len(bsb_elems[0]) if len(bsb_elems[0]) > 1 else 2
     while i > 1:
         count += 1
         i -= 1
-        a, letters_list, width, height = compose_bsb(bsb_elems, letters_list, count)
-        bsb_elems = [a]
+        a, width, height = compose_bsb(bsb_elems, count)
+        bsb_elems = [a[x*4:x*4+4] for x in range(math.ceil(len(a) / 4))]
 
     final_svg = bsb_elems[0][0]
 
     if __grid or __coord:
         __add_grid(__coord, __grid, final_svg, height, width)
     if __save:
-        out_path = filename if filename else 'output/final.svg'
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        final_svg.save(out_path)
+        final_svg.save()
     return final_svg
 
 
 if __name__ == "__main__":
-    generate(string.ascii_uppercase + string.ascii_letters[:23], __grid=True, __coord=True, __save=True)
+    n = 9
+    for x in range(n):
+        generate(string.ascii_uppercase[:x+1], f'output/{x+1}.svg', __grid=True, __coord=True, __save=True)

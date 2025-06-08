@@ -1,7 +1,4 @@
 import math
-import os
-import string
-from pathlib import Path
 
 import svgwrite
 
@@ -17,7 +14,7 @@ def generate_letter_svg(
     size = 300 if large else 200
     dwg = svgwrite.Drawing(filename, size=(size, size))
 
-    __add_grid(__coord, __grid, dwg, size, size)
+    __add_grid(__coord, __grid, dwg)
 
     x = size // 2
     y = size // 2 + (size // 5)
@@ -70,14 +67,16 @@ def generate_msb(
             group3.translate(0, 200)
             dwg.add(group3)
 
-    __add_grid(__coord, __grid, dwg, height, width)
+    __add_grid(__coord, __grid, dwg)
 
     if __save:
         dwg.save()
     return dwg
 
 
-def __add_grid(__coord, __grid, dwg, height, width):
+def __add_grid(__coord, __grid, dwg):
+    height = dwg['height']
+    width = dwg['width']
     if __grid:
         for x in range(100, width, 100):
             dwg.add(dwg.line(start=(x, 0), end=(x, height), stroke="gray", stroke_dasharray=[5, 5]))
@@ -94,86 +93,59 @@ def __add_grid(__coord, __grid, dwg, height, width):
                     ))
 
 
-def generate(
-    input_string: str,
-    filename: str = "output/superblock.svg",
-    __grid: bool = False,
-    __coord: bool = False,
-    __save: bool = True
-):
-    if not input_string.isidentifier():
-        raise ValueError("Строка должна быть допустимым идентификатором Python")
-
-    substrings = [input_string[x*3:x*3+3] for x in range(math.ceil(len(input_string) / 3))]
-    msb_svgs = [generate_msb(s, __save=False) for s in substrings]
-    bsb_elems = [msb_svgs[x*4:x*4+4] for x in range(math.ceil(len(msb_svgs) / 4))]
-
-    def build_blocks(bsb_element: list, count: int = 0):
+def generate_bsb(bsb_elems: list, counter: int = 0):
+    base_size = 400 * (2 ** counter)
+    pos = {
+        0: (0, 0),
+        1: (0, base_size),
+        2: (base_size, 0),
+        3: (base_size, base_size)
+    }
+    dwgs = []
+    for ii, bsb_element in enumerate(bsb_elems):
         bsb_len = len(bsb_element)
-        multiple = (2 ** count)
-        base_size = 400
-        multiple_size = base_size * multiple
-        if bsb_len == 1:
-            width, height = multiple_size, multiple_size
-        elif bsb_len == 2:
-            width, height = multiple_size, 2 * multiple_size
-        else:
-            width, height = 2 * multiple_size, 2 * multiple_size
-
-        # 1 pravo levo | 2 vverh vniz
-        pos = {
-                0: lambda len_: (multiple_size - (100 * (len_ + 1 if len_ <= 3 else 4)), 0),
-                1: lambda len_: (multiple_size - (100 * (len_ + 1 if len_ <= 3 else 4)), multiple_size),
-                2: lambda len_: (- (100 * (len_ + 1 if len_ <= 3 else 4)), multiple_size),
-                # 3: (0, 0),
-            }
-        dwg_i = svgwrite.Drawing(filename, size=(width, height))
+        width, height = base_size, base_size
+        dwg_i = svgwrite.Drawing(size=(width, height))
+        if bsb_len > 1:
+            dwg_i['height'] = dwg_i['height']*2
+        if bsb_len > 2:
+            dwg_i['width'] = dwg_i['width']*2
         for i, bsb in enumerate(bsb_element):
             group = dwg_i.g()
             bsb_elements = bsb.elements
-            x, y = pos[i](len(bsb_elements))
+            x, y = pos[i]
             for el in bsb_elements:
                 group.add(el)
-            rx, ry = x + multiple_size // 2, y + multiple_size // 2
+            rx, ry = x + (base_size//2), y + (base_size//2)
             group.rotate(90*i, (rx, ry))
-
-            if bsb_len == len(bsb_elements):
-                print('here')
-                print(filename)
-                # group.translate(x, y+multiple_size//2)
-                group.translate(x, y)
-            else:
-                group.translate(x, y)
+            group.translate(x, y)
             dwg_i.add(group)
+        dwgs.append(dwg_i)
 
-        return dwg_i, width, height
+    return dwgs
 
-    def compose_bsb(nabor, count: int = 0):
-        ret_nabor = []
-        for bsbs in nabor:
-            if bsbs:
-                svg, width, height = build_blocks(bsbs, count)
-                ret_nabor.append(svg)
-        return ret_nabor, width, height
 
-    count = -1
-    i = len(bsb_elems[0]) if len(bsb_elems[0]) > 1 else 2
-    while i > 1:
-        count += 1
-        i -= 1
-        a, width, height = compose_bsb(bsb_elems, count)
-        bsb_elems = [a[x*4:x*4+4] for x in range(math.ceil(len(a) / 4))]
-
-    final_svg = bsb_elems[0][0]
-
+def make_sigil(input_string, __grid, __coord):
+    if not input_string.isidentifier():
+        raise ValueError("Строка должна быть допустимым идентификатором Python")
+    substrings = [input_string[x * 3:x * 3 + 3] for x in range(math.ceil(len(input_string) / 3))]
+    msb_svgs = [generate_msb(s, __save=False) for s in substrings]
+    bsb_elems = [msb_svgs[x * 4:x * 4 + 4] for x in range(math.ceil(len(msb_svgs) / 4))]
+    bsb_elems = generate_bsb(bsb_elems)
+    counter = 1
+    while len(bsb_elems) > 1:
+        bsb_elems = [bsb_elems[x * 4:x * 4 + 4] for x in range(math.ceil(len(bsb_elems) / 4))]
+        bsb_elems = generate_bsb(bsb_elems, counter)
+        counter += 1
     if __grid or __coord:
-        __add_grid(__coord, __grid, final_svg, height, width)
-    if __save:
-        final_svg.save()
-    return final_svg
+        __add_grid(__coord, __grid, bsb_elems[0])
+
+    bsb_elems[0].filename = f'output/{input_string}.svg'
+    bsb_elems[0].save()
 
 
 if __name__ == "__main__":
-    n = 9
-    for x in range(n):
-        generate(string.ascii_uppercase[:x+1], f'output/{x+1}.svg', __grid=True, __coord=True, __save=True)
+    grid = True
+    coord = True
+    in_string = 'make_jhfgcfhgjksigil'
+    make_sigil(in_string, grid, coord)

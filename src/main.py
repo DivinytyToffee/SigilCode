@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 
 import svgwrite
 
@@ -139,13 +140,15 @@ def make_sigil(input_string, __grid, __coord):
         counter += 1
     if __grid or __coord:
         __add_grid(__coord, __grid, bsb_elems[0])
-
-    bsb_elems[0].filename = f'output/{input_string}.svg'
-    bsb_elems[0].save()
+        filename = f'output/{input_string}.svg'
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        bsb_elems[0].filename = filename
+        bsb_elems[0].save()
+    return bsb_elems[0]
 
 
 if __name__ == "__main__":
     grid = True
     coord = True
-    in_string = 'make_jhfgcfhgjksigil'
+    in_string = 'Classd'
     make_sigil(in_string, grid, coord)

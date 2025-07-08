@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from functools import wraps
 from pathlib import Path
 import svgwrite
@@ -8,23 +9,20 @@ LARGE_BLOCK = 3 * GRID_STEP
 SMALE_BLOCK = 2 * GRID_STEP
 FULL_BLOCK = 4 * GRID_STEP
 
-# Global toggle for saving output
-SAVE = True
 
-
-def add_grid(__coord: bool, __grid: bool, dwg: svgwrite.Drawing) -> None:
+def add_grid(coord: bool, grid: bool, dwg: svgwrite.Drawing) -> None:
     """
     Adds a grid and optional coordinate labels to an SVG drawing.
 
     Args:
-        __coord (bool): Whether to draw coordinate labels at each grid point.
-        __grid (bool): Whether to draw grid lines.
+        coord (bool): Whether to draw coordinate labels at each grid point.
+        grid (bool): Whether to draw grid lines.
         dwg (svgwrite.Drawing): The SVG object to modify.
     """
     height = float(dwg['height'])
     width = float(dwg['width'])
 
-    if __grid:
+    if grid:
         # Draw vertical lines
         for x in range(GRID_STEP, int(width), GRID_STEP):
             dwg.add(dwg.line(
@@ -44,7 +42,7 @@ def add_grid(__coord: bool, __grid: bool, dwg: svgwrite.Drawing) -> None:
             ))
 
         # Add coordinates at grid intersections
-        if __coord:
+        if coord:
             for x in range(GRID_STEP, int(width), GRID_STEP):
                 for y in range(GRID_STEP, int(height), GRID_STEP):
                     dwg.add(dwg.text(
@@ -55,13 +53,14 @@ def add_grid(__coord: bool, __grid: bool, dwg: svgwrite.Drawing) -> None:
                     ))
 
 
-def render_and_save_if_needed(__grid: bool = False, __coord: bool = False):
+def render_and_save_if_needed(grid: bool = False, coord: bool = False, save: bool = True):
     """
     A decorator that optionally adds a grid and saves the result as an SVG file.
 
     Args:
-        __grid (bool): If True, draw grid lines.
-        __coord (bool): If True, include coordinate labels at each grid intersection.
+        grid (bool): If True, draw grid lines.
+        coord (bool): If True, include coordinate labels at each grid intersection.
+        save (bool): If True, save in file.
 
     Returns:
         Callable: A wrapped function that adds the grid and saves the SVG file.
@@ -74,12 +73,12 @@ def render_and_save_if_needed(__grid: bool = False, __coord: bool = False):
             if not result:
                 return result
 
-            bsb = result
+            bsb = result[-1] if isinstance(result, Iterable) else result
 
-            if __grid or __coord:
-                add_grid(__coord, __grid, bsb)
+            if grid or coord:
+                add_grid(coord, grid, bsb)
 
-            if SAVE:
+            if save:
                 output_filename = kwargs.get("input_string", func.__name__)
                 output_path = f'output/{output_filename}.svg'
                 Path(output_path).parent.mkdir(parents=True, exist_ok=True)

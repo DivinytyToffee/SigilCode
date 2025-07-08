@@ -74,6 +74,7 @@ def generate_msb(letters: str) -> svgwrite.Drawing:
     return dwg
 
 
+@render_and_save_if_needed(grid=False, save=False)
 def generate_bsb(bsb_elems: list, counter: int = 0) -> list:
     """
     Generates BSB (Big Sigil Block) grid from nested MSB groups.
@@ -85,7 +86,7 @@ def generate_bsb(bsb_elems: list, counter: int = 0) -> list:
     Returns:
         list: A list of SVG drawings forming a higher-level sigil.
     """
-    base_size = 400 * (2 ** counter)
+    base_size = GRID_STEP * 4 * (2 ** counter)
     pos = {
         0: (0, 0),
         1: (0, base_size),
@@ -116,20 +117,20 @@ def generate_bsb(bsb_elems: list, counter: int = 0) -> list:
     return dwgs
 
 
-def draw_circle(sigil_dwg: svgwrite.Drawing, padding: int = 20) -> svgwrite.Drawing:
+@render_and_save_if_needed(save=True, grid=False)
+def draw_circle(sigil_dwg: svgwrite.Drawing) -> svgwrite.Drawing:
     """
     Wraps an existing SVG drawing with a centered circle.
 
     Args:
         sigil_dwg (svgwrite.Drawing): The drawing to be wrapped.
-        padding (int): Padding around the drawing before circle.
 
     Returns:
         svgwrite.Drawing: A new SVG drawing containing the original drawing and the circle.
     """
     width = float(sigil_dwg.attribs.get('width'))
     height = float(sigil_dwg.attribs.get('height'))
-    box_size = max(width, height) + padding * 2
+    box_size = max(width, height) + 2 * GRID_STEP
     radius = box_size / 2
     cx = cy = box_size / 2
 
@@ -137,7 +138,7 @@ def draw_circle(sigil_dwg: svgwrite.Drawing, padding: int = 20) -> svgwrite.Draw
 
     # Draw circle (centered)
     circle_group = circle.g()
-    circle_group.add(Circle(center=(cx, cy), r=radius, stroke="black", fill="none", stroke_width=2))
+    circle_group.add(Circle(center=(cx, cy), r=radius, stroke="black", fill="none", stroke_width=8))
     circle.add(circle_group)
 
     # Draw sigil content (centered)
@@ -166,7 +167,7 @@ def draw_def_sigil(input_string: str) -> svgwrite.Drawing:
     """
     sigil_dwg = make_sigil(input_string)
 
-    size = sigil_dwg['height'] * 4 + GRID_STEP * 1.5  # padding
+    size = sigil_dwg['height'] * 4 + GRID_STEP
     dwg = svgwrite.Drawing(size=(size, size))
     cx, cy = size / 2, size / 2
     radius = size * 0.4
@@ -191,14 +192,14 @@ def draw_def_sigil(input_string: str) -> svgwrite.Drawing:
     for el in sigil_dwg.elements:
         group.add(el)
 
-    sigil_x = cx / 1.325  # empirically tuned offset
-    sigil_y = cy / 1.325
-    group.translate(sigil_x, sigil_y)
+    sigil_pos = (size - sigil_dwg['height']) / 2
+    group.translate(sigil_pos, sigil_pos)
     dwg.add(group)
 
     return dwg
 
 
+@render_and_save_if_needed(save=False, grid=False)
 def make_sigil(input_string: str) -> svgwrite.Drawing:
     """
     Creates a full sigil from an identifier string.
@@ -228,5 +229,8 @@ def make_sigil(input_string: str) -> svgwrite.Drawing:
 
 
 if __name__ == "__main__":
-    in_string = 'AbstractFactory'
-    draw_def_sigil(in_string)
+    in_string = 'abstract'
+    sigil_ = draw_def_sigil(in_string)
+    draw_circle(sigil_)
+
+

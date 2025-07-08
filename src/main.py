@@ -1,20 +1,22 @@
 import math
-
 import svgwrite
 from svgwrite.shapes import Circle
-
 from src.utils import render_and_save_if_needed, GRID_STEP, LARGE_BLOCK, SMALE_BLOCK, FULL_BLOCK
 
 
-def generate_letter_svg(
-        letter: str,
-        filename: str = "output.svg",
-        large: bool = False,
-        __grid: bool = False,
-        __coord: bool = False
-):
+def generate_letter_svg(letter: str, large: bool = False) -> svgwrite.Drawing:
+    """
+    Generates an SVG drawing of a single letter.
+
+    Args:
+        letter (str): The character to draw.
+        large (bool): Whether to use the large grid block or not.
+
+    Returns:
+        svgwrite.Drawing: The SVG drawing containing the letter.
+    """
     size = LARGE_BLOCK if large else SMALE_BLOCK
-    dwg = svgwrite.Drawing(filename, size=(size, size))
+    dwg = svgwrite.Drawing(size=(size, size))
 
     x = size // 2
     y = size // 2 + (size // 5)
@@ -28,24 +30,28 @@ def generate_letter_svg(
     return dwg
 
 
-def generate_msb(
-        letters: str,
-        filename: str = '',
-        __grid: bool = False,
-        __coord: bool = False
-):
-    if not filename:
-        filename = f'output/{letters}.svg'
-    letters_len = len(letters)
-    assert 0 < letters_len < 4, "Only for 1 to 3 letters are allowed"
-    width, height = (SMALE_BLOCK, LARGE_BLOCK) if letters_len == 1 else (FULL_BLOCK, FULL_BLOCK)
-    dwg = svgwrite.Drawing(filename, size=(width, height))
+def generate_msb(letters: str) -> svgwrite.Drawing:
+    """
+    Generates an MSB (Medium Sigil Block) from 1 to 3 letters.
 
+    Args:
+        letters (str): A string with 1 to 3 characters.
+
+    Returns:
+        svgwrite.Drawing: The SVG group combining the letter sigils.
+    """
+    letters_len = len(letters)
+    assert 0 < letters_len < 4, "Only 1 to 3 letters are allowed."
+
+    width, height = (SMALE_BLOCK, LARGE_BLOCK) if letters_len == 1 else (FULL_BLOCK, FULL_BLOCK)
+    dwg = svgwrite.Drawing(size=(width, height))
+
+    # First (centered) letter
     svg1 = generate_letter_svg(letters[0], large=True)
     group1 = dwg.g()
     for el in svg1.elements:
         group1.add(el)
-    group1.translate((width - (GRID_STEP * 3)) // 2, (height - (int(GRID_STEP * 3.5))) // 2)
+    group1.translate((width - (GRID_STEP * 3)) // 2, (height - int(GRID_STEP * 3.5)) // 2)
     dwg.add(group1)
 
     if letters_len > 1:
@@ -67,7 +73,17 @@ def generate_msb(
     return dwg
 
 
-def generate_bsb(bsb_elems: list, counter: int = 0):
+def generate_bsb(bsb_elems: list, counter: int = 0) -> list:
+    """
+    Generates BSB (Big Sigil Block) grid from nested MSB groups.
+
+    Args:
+        bsb_elems (list): A 2D list of SVG blocks to compose.
+        counter (int): Recursion depth (used to calculate scaling).
+
+    Returns:
+        list: A list of SVG drawings forming a higher-level sigil.
+    """
     base_size = 400 * (2 ** counter)
     pos = {
         0: (0, 0),
@@ -99,19 +115,31 @@ def generate_bsb(bsb_elems: list, counter: int = 0):
     return dwgs
 
 
-def draw_circle(sigil_dwg, padding: int = 20):
-    width = sigil_dwg.attribs.get('width')
-    height = sigil_dwg.attribs.get('height')
+def draw_circle(sigil_dwg: svgwrite.Drawing, padding: int = 20) -> svgwrite.Drawing:
+    """
+    Wraps an existing SVG drawing with a centered circle.
+
+    Args:
+        sigil_dwg (svgwrite.Drawing): The drawing to be wrapped.
+        padding (int): Padding around the drawing before circle.
+
+    Returns:
+        svgwrite.Drawing: A new SVG drawing containing the original drawing and the circle.
+    """
+    width = float(sigil_dwg.attribs.get('width'))
+    height = float(sigil_dwg.attribs.get('height'))
     box_size = max(width, height) + padding * 2
     radius = box_size / 2
-    cx, cy = box_size / 2, box_size / 2
+    cx = cy = box_size / 2
 
     circle = svgwrite.Drawing(size=(box_size, box_size))
 
+    # Draw circle (centered)
     circle_group = circle.g()
     circle_group.add(Circle(center=(cx, cy), r=radius, stroke="black", fill="none", stroke_width=2))
     circle.add(circle_group)
 
+    # Draw sigil content (centered)
     sigil_group = circle.g()
     for el in sigil_dwg.elements:
         sigil_group.add(el)
@@ -120,17 +148,29 @@ def draw_circle(sigil_dwg, padding: int = 20):
     sigil_y = cy - height / 2
     sigil_group.translate(sigil_x, sigil_y)
     circle.add(sigil_group)
+
     return circle
 
 
-@render_and_save_if_needed
-def make_sigil(input_string):
+@render_and_save_if_needed()
+def make_sigil(input_string: str) -> svgwrite.Drawing:
+    """
+    Creates a full sigil from an identifier string.
+
+    Args:
+        input_string (str): A valid Python identifier to encode.
+
+    Returns:
+        svgwrite.Drawing: The final SVG sigil drawing.
+    """
     if not input_string.isidentifier():
-        raise ValueError("Строка должна быть допустимым идентификатором Python")
+        raise ValueError("Input must be a valid Python identifier.")
+
     substrings = [input_string[x * 3:x * 3 + 3] for x in range(math.ceil(len(input_string) / 3))]
     msb_svgs = [generate_msb(s) for s in substrings]
     bsb_elems = [msb_svgs[x * 4:x * 4 + 4] for x in range(math.ceil(len(msb_svgs) / 4))]
     bsb_elems = generate_bsb(bsb_elems)
+
     counter = 1
     while len(bsb_elems) > 1:
         bsb_elems = [bsb_elems[x * 4:x * 4 + 4] for x in range(math.ceil(len(bsb_elems) / 4))]

@@ -1,6 +1,7 @@
 import math
 import svgwrite
 from svgwrite.shapes import Circle
+
 from src.utils import render_and_save_if_needed, GRID_STEP, LARGE_BLOCK, SMALE_BLOCK, FULL_BLOCK
 
 
@@ -153,6 +154,39 @@ def draw_circle(sigil_dwg: svgwrite.Drawing, padding: int = 20) -> svgwrite.Draw
 
 
 @render_and_save_if_needed()
+def draw_def_sigil(sigil_dwg: svgwrite.Drawing):
+    size: int = sigil_dwg['height'] * 4 + 150
+    dwg = svgwrite.Drawing(size=(size, size))
+    cx, cy = size / 2, size / 2
+    radius = size * 0.4  # leave padding
+
+    # Calculate 5 points on the circle
+    points = []
+    for i in range(5):
+        angle_deg = 90 + i * 72
+        angle_rad = math.radians(angle_deg)
+        x = cx + radius * math.cos(angle_rad)
+        y = cy - radius * math.sin(angle_rad)
+        points.append((x, y))
+
+    # Draw pentagram using specific connection order
+    star_order = [0, 2, 4, 1, 3, 0]
+    for i in range(len(star_order) - 1):
+        a = points[star_order[i]]
+        b = points[star_order[i + 1]]
+        dwg.add(dwg.line(start=a, end=b, stroke="black", stroke_width=10))
+
+    group = dwg.g()
+    for el in sigil_dwg.elements:
+        group.add(el)
+    sigil_x = cx / 1.325
+    sigil_y = cy / 1.325
+    group.translate(sigil_x, sigil_y)
+    dwg.add(group)
+
+    return dwg
+
+
 def make_sigil(input_string: str) -> svgwrite.Drawing:
     """
     Creates a full sigil from an identifier string.
@@ -184,3 +218,4 @@ def make_sigil(input_string: str) -> svgwrite.Drawing:
 if __name__ == "__main__":
     in_string = 'AbstractFactory'
     sigil_text = make_sigil(in_string)
+    draw_def_sigil(sigil_text)

@@ -80,7 +80,7 @@ def render_and_save_if_needed(__grid: bool = False, __coord: bool = False):
                 add_grid(__coord, __grid, bsb)
 
             if SAVE:
-                output_filename = kwargs.get("input_string", "sigil")
+                output_filename = kwargs.get("input_string", func.__name__)
                 output_path = f'output/{output_filename}.svg'
                 Path(output_path).parent.mkdir(parents=True, exist_ok=True)
                 bsb.filename = output_path

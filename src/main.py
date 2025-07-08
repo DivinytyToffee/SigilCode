@@ -1,6 +1,8 @@
+import base64
 import math
 import svgwrite
 from svgwrite.shapes import Circle
+from string import ascii_lowercase, ascii_uppercase, digits
 
 from src.utils import render_and_save_if_needed, GRID_STEP, LARGE_BLOCK, SMALE_BLOCK, FULL_BLOCK
 
@@ -228,9 +230,216 @@ def make_sigil(input_string: str) -> svgwrite.Drawing:
     return sigil
 
 
+def text_to_hash(text: str) -> str:
+    """
+    Encodes input text into a base32 string without padding.
+
+    Args:
+        text (str): Any UTF-8 text.
+
+    Returns:
+        str: Base32 encoded string with no trailing '=' characters.
+    """
+    return base64.b32encode(text.encode('utf-8')).decode('ascii').rstrip('=')
+
+
+def hash_to_text(hash_string: str) -> str:
+    """
+    Decodes a base32 string (without padding) back into original text.
+
+    Args:
+        hash_string (str): Base32 encoded string without '='.
+
+    Returns:
+        str: Decoded original text.
+    """
+    padding = '=' * (-len(hash_string) % 8)  # base32 requires length % 8 == 0
+    decoded_bytes = base64.b32decode(hash_string + padding)
+    return decoded_bytes.decode('utf-8')
+
+
+def draw_custom_path(
+    dwg: svgwrite.Drawing,
+    start: tuple,
+    segments: list,
+    size: tuple,
+    stroke="black",
+    stroke_width=2
+) -> svgwrite.path.Path:
+    """
+    Draws a multi-segment path with optional curves and angle control.
+
+    Args:
+        dwg (svgwrite.Drawing): Drawing to add to.
+        start (tuple): (x, y) start point.
+        segments (list): List of segments, each as:
+            {
+                "dx": int,
+                "dy": int,
+                "curved": bool,
+                "bend": float (optional, 0–1, curve intensity)
+            }
+        size (tuple): (width, height) — to constrain the path.
+        stroke (str): Stroke color.
+        stroke_width (int): Line thickness.
+
+    Returns:
+        svgwrite.path.Path: The constructed path.
+    """
+    width, height = size
+    x, y = start
+    path = dwg.path(d=f"M {x} {y}", stroke=stroke, fill="none", stroke_width=stroke_width)
+
+    for seg in segments:
+        dx = seg["dx"]
+        dy = seg["dy"]
+        curved = seg.get("curved", False)
+        bend = seg.get("bend", 0.5)
+
+        nx = max(0, min(width, x + dx))
+        ny = max(0, min(height, y + dy))
+
+        if curved:
+            # контрольная точка между (x,y) и (nx,ny) — изогнута перпендикулярно
+            cx = x + dx / 2 + bend * dy
+            cy = y + dy / 2 - bend * dx
+            path.push(f"Q {cx} {cy}, {nx} {ny}")
+        else:
+            path.push(f"L {nx} {ny}")
+
+        x, y = nx, ny
+
+    return path
+
+
+def decorate_line_with_perpendiculars(dwg, group, start, end, count=6, length=10, radius=3, spacing=20):
+    """
+    Decorates a straight line with alternating perpendicular ticks, each ending with a small circle.
+
+    Args:
+        dwg (svgwrite.Drawing): SVG drawing to add elements to.
+        group (svgwrite.Drawing): SVG drawing to add elements to.
+        start (tuple): (x, y) start of main line.
+        end (tuple): (x, y) end of main line.
+        count (int): Number of decorations (evenly spaced).
+        length (int): Length of each perpendicular tick line.
+        radius (int): Radius of the circle at the end of each tick.
+        spacing (int): Minimum distance between each decoration.
+        :param group:
+    """
+    x0, y0 = start
+    x1, y1 = end
+
+    # Main vector
+    dx = x1 - x0
+    dy = y1 - y0
+    length_main = math.hypot(dx, dy)
+
+    if length_main == 0:
+        return  # avoid division by zero
+
+    # Unit vector along the main line
+    ux = dx / length_main
+    uy = dy / length_main
+
+    # Perpendicular unit vector
+    px = -uy
+    py = ux
+
+    for i in range(1, count + 1):
+        # Position along the main line
+        t = i / (count + 1)
+        base_x = x0 + dx * t
+        base_y = y0 + dy * t
+
+        # Alternate direction (+/-) for each decoration
+        sign = 1 if i % 2 == 0 else -1
+
+        # Tick end point
+        tip_x = base_x + sign * px * length
+        tip_y = base_y + sign * py * length
+
+        # Draw tick
+        group.add(dwg.line(start=(base_x, base_y), end=(tip_x, tip_y), stroke="black", stroke_width=1))
+
+        # Draw circle
+        group.add(dwg.circle(center=(tip_x, tip_y), r=radius,  stroke='black', fill="none", stroke_width=1))
+
+
+@render_and_save_if_needed(grid=True)
+def hash_to_svg(fstring: str) -> svgwrite.Drawing:
+    size = GRID_STEP
+    min_length = GRID_STEP // 10
+    dwg = svgwrite.Drawing(size=(size, size))
+    cx, cy = size // 2, size // 2
+    x, y = cx, cy
+    angle = 0
+
+    for i, char in enumerate(fstring):
+        char1, char2 = text_to_hash(char)
+        print(char1, char2)
+        val1 = ord(char1)
+        val2 = ord(char2)
+        print(val1, val2)
+        is_digit = char.isdigit()
+        is_vowels = bool(ord(char) % 2)
+
+        length = min_length + (val1 % 20)
+        angle += (val1 % 360)
+
+        rad = math.radians(angle)
+        nx = x + length * math.cos(rad)
+        ny = y + length * math.sin(rad)
+
+        if not is_digit:
+            if is_vowels:
+                element = dwg.g()
+                start = (x - val1 // 2, y)
+                end = (x + val1 // 2, y)
+                element.add(dwg.line(start=start, end=end, stroke="black", stroke_width=2))
+                decorate_line_with_perpendiculars(
+                    dwg,
+                    element,
+                    start,
+                    end,
+                    val2 // 10,
+                    val2 % 10
+                )
+                element.rotate(angle, (x, y))
+
+            else:
+                segments = [
+                    {"dx": val1//10, "dy": 0, "curved": True, "bend": 0.5},
+                    {"dx": 0, "dy": val2//10, "curved": True, "bend": -0.4},
+                    {"dx": -val1//10, "dy": 0, "curved": True, "bend": 0.5},
+                    {"dx": 0, "dy": -val2//10, "curved": True, "bend": -0.5},
+                ]
+                element = draw_custom_path(dwg, start=(x, y), segments=segments, size=(nx, ny))
+        else:
+            if is_vowels:
+                points = []
+                for j in range(3):
+                    angle_deg = 60 + j * 120 - 90  # start pointing up
+                    angle_rad = math.radians(angle_deg)
+                    x = cx + 5 * math.cos(angle_rad)
+                    y = cy + 5 * math.sin(angle_rad)
+                    points.append((x, y))
+
+                element = dwg.polygon(points=points, fill='black')
+            else:
+                element = dwg.circle(center=(x, y), r=5, stroke='black', fill="none", stroke_width=1)
+
+        dwg.add(element)
+
+        x, y = nx, ny
+
+    return dwg
+
+
 if __name__ == "__main__":
-    in_string = 'abstract'
-    sigil_ = draw_def_sigil(in_string)
-    draw_circle(sigil_)
+    in_string = 'a'
+    # for x in ascii_uppercase:
+    #     print(ord(x))
+    sigil_ = hash_to_svg(in_string)
 
 

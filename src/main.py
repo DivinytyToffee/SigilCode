@@ -154,11 +154,22 @@ def draw_circle(sigil_dwg: svgwrite.Drawing, padding: int = 20) -> svgwrite.Draw
 
 
 @render_and_save_if_needed()
-def draw_def_sigil(sigil_dwg: svgwrite.Drawing):
-    size: int = sigil_dwg['height'] * 4 + 150
+def draw_def_sigil(input_string: str) -> svgwrite.Drawing:
+    """
+    Creates a sigil for a Python function name, embedding it inside a pentagram.
+
+    Args:
+        input_string (str): A valid Python identifier (e.g., function name).
+
+    Returns:
+        svgwrite.Drawing: SVG drawing with the sigil inside a pentagram.
+    """
+    sigil_dwg = make_sigil(input_string)
+
+    size = sigil_dwg['height'] * 4 + GRID_STEP * 1.5  # padding
     dwg = svgwrite.Drawing(size=(size, size))
     cx, cy = size / 2, size / 2
-    radius = size * 0.4  # leave padding
+    radius = size * 0.4
 
     # Calculate 5 points on the circle
     points = []
@@ -179,7 +190,8 @@ def draw_def_sigil(sigil_dwg: svgwrite.Drawing):
     group = dwg.g()
     for el in sigil_dwg.elements:
         group.add(el)
-    sigil_x = cx / 1.325
+
+    sigil_x = cx / 1.325  # empirically tuned offset
     sigil_y = cy / 1.325
     group.translate(sigil_x, sigil_y)
     dwg.add(group)
@@ -217,5 +229,4 @@ def make_sigil(input_string: str) -> svgwrite.Drawing:
 
 if __name__ == "__main__":
     in_string = 'AbstractFactory'
-    sigil_text = make_sigil(in_string)
-    draw_def_sigil(sigil_text)
+    draw_def_sigil(in_string)

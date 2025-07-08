@@ -1,13 +1,9 @@
 import math
-from pathlib import Path
 
 import svgwrite
+from svgwrite.shapes import Circle
 
-GRID_STEP = 100
-LARGE_BLOCK = 3 * GRID_STEP
-SMALE_BLOCK = 2 * GRID_STEP
-FULL_BLOCK = 4 * GRID_STEP
-SAVE = True
+from src.utils import render_and_save_if_needed, GRID_STEP, LARGE_BLOCK, SMALE_BLOCK, FULL_BLOCK
 
 
 def generate_letter_svg(
@@ -19,8 +15,6 @@ def generate_letter_svg(
 ):
     size = LARGE_BLOCK if large else SMALE_BLOCK
     dwg = svgwrite.Drawing(filename, size=(size, size))
-
-    __add_grid(__coord, __grid, dwg)
 
     x = size // 2
     y = size // 2 + (size // 5)
@@ -70,27 +64,7 @@ def generate_msb(
             group3.translate(0, SMALE_BLOCK)
             dwg.add(group3)
 
-    __add_grid(__coord, __grid, dwg)
     return dwg
-
-
-def __add_grid(__coord, __grid, dwg):
-    height = dwg['height']
-    width = dwg['width']
-    if __grid:
-        for x in range(GRID_STEP, width, GRID_STEP):
-            dwg.add(dwg.line(start=(x, 0), end=(x, height), stroke="gray", stroke_dasharray=[5, 5]))
-        for y in range(GRID_STEP, height, GRID_STEP):
-            dwg.add(dwg.line(start=(0, y), end=(width, y), stroke="gray", stroke_dasharray=[5, 5]))
-        if __coord:
-            for x in range(GRID_STEP, width, GRID_STEP):
-                for y in range(GRID_STEP, height, GRID_STEP):
-                    dwg.add(dwg.text(
-                        f"({x},{y})",
-                        insert=(x + 3, y - 3),
-                        font_size="12",
-                        fill="gray"
-                    ))
 
 
 def generate_bsb(bsb_elems: list, counter: int = 0):
@@ -107,17 +81,17 @@ def generate_bsb(bsb_elems: list, counter: int = 0):
         width, height = base_size, base_size
         dwg_i = svgwrite.Drawing(size=(width, height))
         if bsb_len > 1:
-            dwg_i['height'] = dwg_i['height']*2
+            dwg_i['height'] = dwg_i['height'] * 2
         if bsb_len > 2:
-            dwg_i['width'] = dwg_i['width']*2
+            dwg_i['width'] = dwg_i['width'] * 2
         for i, bsb in enumerate(bsb_element):
             group = dwg_i.g()
             bsb_elements = bsb.elements
             x, y = pos[i]
             for el in bsb_elements:
                 group.add(el)
-            rx, ry = x + (base_size//2), y + (base_size//2)
-            group.rotate(90*i, (rx, ry))
+            rx, ry = x + (base_size // 2), y + (base_size // 2)
+            group.rotate(90 * i, (rx, ry))
             group.translate(x, y)
             dwg_i.add(group)
         dwgs.append(dwg_i)
@@ -125,7 +99,32 @@ def generate_bsb(bsb_elems: list, counter: int = 0):
     return dwgs
 
 
-def make_sigil(input_string, __grid, __coord):
+def draw_circle(sigil_dwg, padding: int = 20):
+    width = sigil_dwg.attribs.get('width')
+    height = sigil_dwg.attribs.get('height')
+    box_size = max(width, height) + padding * 2
+    radius = box_size / 2
+    cx, cy = box_size / 2, box_size / 2
+
+    circle = svgwrite.Drawing(size=(box_size, box_size))
+
+    circle_group = circle.g()
+    circle_group.add(Circle(center=(cx, cy), r=radius, stroke="black", fill="none", stroke_width=2))
+    circle.add(circle_group)
+
+    sigil_group = circle.g()
+    for el in sigil_dwg.elements:
+        sigil_group.add(el)
+
+    sigil_x = cx - width / 2
+    sigil_y = cy - height / 2
+    sigil_group.translate(sigil_x, sigil_y)
+    circle.add(sigil_group)
+    return circle
+
+
+@render_and_save_if_needed
+def make_sigil(input_string):
     if not input_string.isidentifier():
         raise ValueError("Строка должна быть допустимым идентификатором Python")
     substrings = [input_string[x * 3:x * 3 + 3] for x in range(math.ceil(len(input_string) / 3))]
@@ -137,18 +136,11 @@ def make_sigil(input_string, __grid, __coord):
         bsb_elems = [bsb_elems[x * 4:x * 4 + 4] for x in range(math.ceil(len(bsb_elems) / 4))]
         bsb_elems = generate_bsb(bsb_elems, counter)
         counter += 1
-    if __grid or __coord or SAVE:
-        __add_grid(__coord, __grid, bsb_elems[0])
-        if SAVE:
-            filename = f'output/{input_string}.svg'
-            Path(filename).parent.mkdir(parents=True, exist_ok=True)
-            bsb_elems[0].filename = filename
-            bsb_elems[0].save()
-    return bsb_elems[0]
+
+    sigil = draw_circle(bsb_elems[0])
+    return sigil
 
 
 if __name__ == "__main__":
-    grid = False
-    coord = False
     in_string = 'AbstractFactory'
-    make_sigil(in_string, grid, coord)
+    sigil_text = make_sigil(in_string)

@@ -47,7 +47,7 @@ def generate_msb(
     width, height = (SMALE_BLOCK, LARGE_BLOCK) if letters_len == 1 else (FULL_BLOCK, FULL_BLOCK)
     dwg = svgwrite.Drawing(filename, size=(width, height))
 
-    svg1 = generate_letter_svg(letters[0], __save=False, large=True)
+    svg1 = generate_letter_svg(letters[0], large=True)
     group1 = dwg.g()
     for el in svg1.elements:
         group1.add(el)
@@ -55,7 +55,7 @@ def generate_msb(
     dwg.add(group1)
 
     if letters_len > 1:
-        svg2 = generate_letter_svg(letters[1], __save=False, large=False)
+        svg2 = generate_letter_svg(letters[1], large=False)
         group2 = dwg.g()
         for el in svg2.elements:
             group2.add(el)
@@ -63,7 +63,7 @@ def generate_msb(
         dwg.add(group2)
 
         if letters_len > 2:
-            svg3 = generate_letter_svg(letters[2], __save=False, large=False)
+            svg3 = generate_letter_svg(letters[2], large=False)
             group3 = dwg.g()
             for el in svg3.elements:
                 group3.add(el)
@@ -129,7 +129,7 @@ def make_sigil(input_string, __grid, __coord):
     if not input_string.isidentifier():
         raise ValueError("Строка должна быть допустимым идентификатором Python")
     substrings = [input_string[x * 3:x * 3 + 3] for x in range(math.ceil(len(input_string) / 3))]
-    msb_svgs = [generate_msb(s, __save=False) for s in substrings]
+    msb_svgs = [generate_msb(s) for s in substrings]
     bsb_elems = [msb_svgs[x * 4:x * 4 + 4] for x in range(math.ceil(len(msb_svgs) / 4))]
     bsb_elems = generate_bsb(bsb_elems)
     counter = 1
@@ -150,5 +150,5 @@ def make_sigil(input_string, __grid, __coord):
 if __name__ == "__main__":
     grid = False
     coord = False
-    in_string = 'qwe_add_grid'
+    in_string = 'AbstractFactory'
     make_sigil(in_string, grid, coord)

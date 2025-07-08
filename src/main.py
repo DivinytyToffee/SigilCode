@@ -3,6 +3,11 @@ from pathlib import Path
 
 import svgwrite
 
+GRID_STEP = 100
+LARGE_BLOCK = 3 * GRID_STEP
+SMALE_BLOCK = 2 * GRID_STEP
+FULL_BLOCK = 4 * GRID_STEP
+
 
 def generate_letter_svg(
         letter: str,
@@ -12,7 +17,7 @@ def generate_letter_svg(
         __coord: bool = False,
         __save: bool = True
 ):
-    size = 300 if large else 200
+    size = LARGE_BLOCK if large else SMALE_BLOCK
     dwg = svgwrite.Drawing(filename, size=(size, size))
 
     __add_grid(__coord, __grid, dwg)
@@ -42,14 +47,14 @@ def generate_msb(
         filename = f'output/{letters}.svg'
     letters_len = len(letters)
     assert 0 < letters_len < 4, "Only for 1 to 3 letters are allowed"
-    width, height = (200, 300) if letters_len == 1 else (400, 400)
+    width, height = (SMALE_BLOCK, LARGE_BLOCK) if letters_len == 1 else (FULL_BLOCK, FULL_BLOCK)
     dwg = svgwrite.Drawing(filename, size=(width, height))
 
     svg1 = generate_letter_svg(letters[0], __save=False, large=True)
     group1 = dwg.g()
     for el in svg1.elements:
         group1.add(el)
-    group1.translate((width - 300) // 2, (height - 350) // 2)
+    group1.translate((width - (GRID_STEP * 3)) // 2, (height - (int(GRID_STEP * 3.5))) // 2)
     dwg.add(group1)
 
     if letters_len > 1:
@@ -57,7 +62,7 @@ def generate_msb(
         group2 = dwg.g()
         for el in svg2.elements:
             group2.add(el)
-        group2.translate(200, 200)
+        group2.translate(SMALE_BLOCK, SMALE_BLOCK)
         dwg.add(group2)
 
         if letters_len > 2:
@@ -65,7 +70,7 @@ def generate_msb(
             group3 = dwg.g()
             for el in svg3.elements:
                 group3.add(el)
-            group3.translate(0, 200)
+            group3.translate(0, SMALE_BLOCK)
             dwg.add(group3)
 
     __add_grid(__coord, __grid, dwg)
@@ -79,13 +84,13 @@ def __add_grid(__coord, __grid, dwg):
     height = dwg['height']
     width = dwg['width']
     if __grid:
-        for x in range(100, width, 100):
+        for x in range(GRID_STEP, width, GRID_STEP):
             dwg.add(dwg.line(start=(x, 0), end=(x, height), stroke="gray", stroke_dasharray=[5, 5]))
-        for y in range(100, height, 100):
+        for y in range(GRID_STEP, height, GRID_STEP):
             dwg.add(dwg.line(start=(0, y), end=(width, y), stroke="gray", stroke_dasharray=[5, 5]))
         if __coord:
-            for x in range(100, width, 100):
-                for y in range(100, height, 100):
+            for x in range(GRID_STEP, width, GRID_STEP):
+                for y in range(GRID_STEP, height, GRID_STEP):
                     dwg.add(dwg.text(
                         f"({x},{y})",
                         insert=(x + 3, y - 3),
@@ -148,7 +153,7 @@ def make_sigil(input_string, __grid, __coord):
 
 
 if __name__ == "__main__":
-    grid = True
-    coord = True
-    in_string = 'Classd'
+    grid = False
+    coord = False
+    in_string = 'qwe_add_grid'
     make_sigil(in_string, grid, coord)

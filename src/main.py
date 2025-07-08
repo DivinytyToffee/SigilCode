@@ -7,6 +7,7 @@ GRID_STEP = 100
 LARGE_BLOCK = 3 * GRID_STEP
 SMALE_BLOCK = 2 * GRID_STEP
 FULL_BLOCK = 4 * GRID_STEP
+SAVE = True
 
 
 def generate_letter_svg(
@@ -14,8 +15,7 @@ def generate_letter_svg(
         filename: str = "output.svg",
         large: bool = False,
         __grid: bool = False,
-        __coord: bool = False,
-        __save: bool = True
+        __coord: bool = False
 ):
     size = LARGE_BLOCK if large else SMALE_BLOCK
     dwg = svgwrite.Drawing(filename, size=(size, size))
@@ -31,8 +31,6 @@ def generate_letter_svg(
         font_size=str(size // 2),
         font_family="Helmswald Post"
     ))
-    if __save:
-        dwg.save()
     return dwg
 
 
@@ -40,8 +38,7 @@ def generate_msb(
         letters: str,
         filename: str = '',
         __grid: bool = False,
-        __coord: bool = False,
-        __save: bool = True
+        __coord: bool = False
 ):
     if not filename:
         filename = f'output/{letters}.svg'
@@ -74,9 +71,6 @@ def generate_msb(
             dwg.add(group3)
 
     __add_grid(__coord, __grid, dwg)
-
-    if __save:
-        dwg.save()
     return dwg
 
 
@@ -143,12 +137,13 @@ def make_sigil(input_string, __grid, __coord):
         bsb_elems = [bsb_elems[x * 4:x * 4 + 4] for x in range(math.ceil(len(bsb_elems) / 4))]
         bsb_elems = generate_bsb(bsb_elems, counter)
         counter += 1
-    if __grid or __coord:
+    if __grid or __coord or SAVE:
         __add_grid(__coord, __grid, bsb_elems[0])
-        filename = f'output/{input_string}.svg'
-        Path(filename).parent.mkdir(parents=True, exist_ok=True)
-        bsb_elems[0].filename = filename
-        bsb_elems[0].save()
+        if SAVE:
+            filename = f'output/{input_string}.svg'
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            bsb_elems[0].filename = filename
+            bsb_elems[0].save()
     return bsb_elems[0]
 
 

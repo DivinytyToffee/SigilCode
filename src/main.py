@@ -132,15 +132,15 @@ def draw_circle(sigil_dwg: svgwrite.Drawing) -> svgwrite.Drawing:
     """
     width = float(sigil_dwg.attribs.get('width'))
     height = float(sigil_dwg.attribs.get('height'))
-    box_size = max(width, height) + 2 * GRID_STEP
-    radius = box_size / 2
+    box_size = max(width, height) + 2
+    radius = box_size / 2 - 2
     cx = cy = box_size / 2
 
     circle = svgwrite.Drawing(size=(box_size, box_size))
 
     # Draw circle (centered)
     circle_group = circle.g()
-    circle_group.add(Circle(center=(cx, cy), r=radius, stroke="black", fill="none", stroke_width=8))
+    circle_group.add(Circle(center=(cx, cy), r=radius, stroke="black", fill="none", stroke_width=2))
     circle.add(circle_group)
 
     # Draw sigil content (centered)
@@ -169,7 +169,7 @@ def draw_def_sigil(input_string: str) -> svgwrite.Drawing:
     """
     sigil_dwg = make_sigil(input_string)
 
-    size = sigil_dwg['height'] * 4 + GRID_STEP
+    size = sigil_dwg['height'] * 3 + GRID_STEP
     dwg = svgwrite.Drawing(size=(size, size))
     cx, cy = size / 2, size / 2
     radius = size * 0.4
@@ -188,7 +188,7 @@ def draw_def_sigil(input_string: str) -> svgwrite.Drawing:
     for i in range(len(star_order) - 1):
         a = points[star_order[i]]
         b = points[star_order[i + 1]]
-        dwg.add(dwg.line(start=a, end=b, stroke="black", stroke_width=10))
+        dwg.add(dwg.line(start=a, end=b, stroke="black", stroke_width=2))
 
     group = dwg.g()
     for el in sigil_dwg.elements:
@@ -215,18 +215,18 @@ def make_sigil(input_string: str) -> svgwrite.Drawing:
     if not input_string.isidentifier():
         raise ValueError("Input must be a valid Python identifier.")
 
-    substrings = [input_string[x * 3:x * 3 + 3] for x in range(math.ceil(len(input_string) / 3))]
-    msb_svgs = [generate_msb(s) for s in substrings]
-    bsb_elems = [msb_svgs[x * 4:x * 4 + 4] for x in range(math.ceil(len(msb_svgs) / 4))]
-    bsb_elems = generate_bsb(bsb_elems)
-
-    counter = 1
-    while len(bsb_elems) > 1:
-        bsb_elems = [bsb_elems[x * 4:x * 4 + 4] for x in range(math.ceil(len(bsb_elems) / 4))]
-        bsb_elems = generate_bsb(bsb_elems, counter)
-        counter += 1
-
-    sigil = draw_circle(bsb_elems[0])
+    # substrings = [input_string[x * 3:x * 3 + 3] for x in range(math.ceil(len(input_string) / 3))]
+    # msb_svgs = [generate_msb(s) for s in substrings]
+    # bsb_elems = [msb_svgs[x * 4:x * 4 + 4] for x in range(math.ceil(len(msb_svgs) / 4))]
+    # bsb_elems = generate_bsb(bsb_elems)
+    #
+    # counter = 1
+    # while len(bsb_elems) > 1:
+    #     bsb_elems = [bsb_elems[x * 4:x * 4 + 4] for x in range(math.ceil(len(bsb_elems) / 4))]
+    #     bsb_elems = generate_bsb(bsb_elems, counter)
+    #     counter += 1
+    bsb_elems = hash_to_svg(in_string)
+    sigil = draw_circle(bsb_elems)
     return sigil
 
 
@@ -438,8 +438,7 @@ def hash_to_svg(fstring: str) -> svgwrite.Drawing:
 
 if __name__ == "__main__":
     in_string = 'a'
-    # for x in ascii_uppercase:
-    #     print(ord(x))
-    sigil_ = hash_to_svg(in_string)
+    draw_def_sigil(in_string)
+
 
 
